@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, Crown, Check, Zap } from "lucide-react";
+import { Settings, Crown, Check, X, Zap, Minus } from "lucide-react";
 
 const plans = [
   {
-    id: "pro",
-    name: "Pro",
+    id: "baslangic",
+    name: "Başlangıç",
     badge: "Popüler",
     color: "border-blue-500",
     highlight: true,
@@ -21,11 +21,11 @@ const plans = [
       "Gelişmiş raporlar",
       "E-posta desteği",
     ],
-    cta: "Pro'ya Geç",
+    cta: "Başlangıç'a Geç",
   },
   {
-    id: "kurumsal",
-    name: "Kurumsal",
+    id: "pro",
+    name: "Pro",
     badge: "Premium",
     color: "border-amber-400",
     highlight: false,
@@ -42,12 +42,31 @@ const plans = [
       "API erişimi",
       "7/24 öncelikli destek",
     ],
-    cta: "Kurumsal'a Geç",
+    cta: "Pro'ya Geç",
   },
+];
+
+const tableRows = [
+  { label: "Bina sayısı",              baslangic: "10 bina",     pro: "Sınırsız" },
+  { label: "Daire sayısı",             baslangic: "Sınırsız",    pro: "Sınırsız" },
+  { label: "PDF rapor & dışa aktarım", baslangic: true,          pro: true },
+  { label: "Taksit takvimi",           baslangic: true,          pro: true },
+  { label: "Gelişmiş raporlar",        baslangic: true,          pro: true },
+  { label: "SMS hatırlatma",           baslangic: false,         pro: true },
+  { label: "WhatsApp bildirimleri",    baslangic: false,         pro: true },
+  { label: "Ekip hesabı & rol yönetimi", baslangic: false,       pro: true },
+  { label: "API erişimi",              baslangic: false,         pro: true },
+  { label: "Destek",                   baslangic: "E-posta",     pro: "7/24 Öncelikli" },
 ];
 
 function fmt(n: number) {
   return new Intl.NumberFormat("tr-TR").format(n);
+}
+
+function Cell({ value }: { value: boolean | string }) {
+  if (value === true) return <Check className="w-5 h-5 text-emerald-500 mx-auto" />;
+  if (value === false) return <Minus className="w-4 h-4 text-slate-300 mx-auto" />;
+  return <span className="text-sm font-medium text-slate-700">{value}</span>;
 }
 
 export default function SettingsPage() {
@@ -105,7 +124,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Aylık / Yıllık toggle */}
+        {/* Toggle */}
         <div className="flex items-center justify-center mb-6">
           <div className="bg-slate-100 rounded-xl p-1 flex gap-1">
             <button
@@ -130,7 +149,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Plan kartları */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -148,27 +168,19 @@ export default function SettingsPage() {
               </div>
 
               {billing === "monthly" ? (
-                <div className="mb-1">
+                <div className="mb-4">
                   <span className="text-3xl font-bold text-slate-900">₺{fmt(plan.monthly)}</span>
                   <span className="text-slate-400 text-sm"> / ay</span>
                 </div>
               ) : (
-                <div className="mb-1">
+                <div className="mb-4">
                   <span className="text-3xl font-bold text-slate-900">₺{fmt(plan.yearly)}</span>
                   <span className="text-slate-400 text-sm"> / yıl</span>
-                  <div className="text-xs text-emerald-600 font-medium mt-0.5">
+                  <div className="text-xs text-emerald-600 font-medium mt-1">
                     Aylık ₺{fmt(plan.yearlyMonthly)}'ye denk · 1 ay bedava
                   </div>
                 </div>
               )}
-
-              <div className={`text-xs font-medium mb-4 mt-2 px-2 py-1 rounded-lg inline-block ${
-                plan.highlight ? "bg-blue-100 text-blue-700" : "bg-amber-50 text-amber-700"
-              }`}>
-                {billing === "yearly"
-                  ? `₺${fmt(plan.monthly - plan.yearlyMonthly)} tasarruf / ay`
-                  : "Aylık faturalandırma"}
-              </div>
 
               <ul className="space-y-2 mb-5">
                 {plan.features.map((f) => (
@@ -193,7 +205,29 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <p className="text-xs text-slate-400 text-center mt-5">
+        {/* Karşılaştırma tablosu */}
+        <div className="border border-slate-200 rounded-2xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3 w-1/2">Özellik</th>
+                <th className="text-center text-xs font-semibold text-blue-600 uppercase tracking-wide px-4 py-3 w-1/4">Başlangıç</th>
+                <th className="text-center text-xs font-semibold text-amber-500 uppercase tracking-wide px-4 py-3 w-1/4">Pro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map((row, i) => (
+                <tr key={row.label} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                  <td className="px-4 py-3 text-sm text-slate-600">{row.label}</td>
+                  <td className="px-4 py-3 text-center"><Cell value={row.baslangic} /></td>
+                  <td className="px-4 py-3 text-center"><Cell value={row.pro} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-xs text-slate-400 text-center mt-4">
           Tüm planlar 14 gün ücretsiz deneme içerir · İptal istediğiniz zaman
         </p>
       </div>
