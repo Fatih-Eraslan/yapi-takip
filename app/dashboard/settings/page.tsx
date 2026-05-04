@@ -1,44 +1,58 @@
 "use client";
 
-import { Settings, Crown, Check } from "lucide-react";
+import { useState } from "react";
+import { Settings, Crown, Check, Zap } from "lucide-react";
 
 const plans = [
   {
-    name: "Ücretsiz",
-    price: "₺0",
-    period: "/ ay",
-    current: true,
-    features: ["1 bina", "20 daire", "Temel raporlar", "E-posta desteği"],
-    cta: "Mevcut Plan",
-    disabled: true,
-    color: "border-slate-200",
-    badge: "",
-  },
-  {
+    id: "pro",
     name: "Pro",
-    price: "₺299",
-    period: "/ ay",
-    current: false,
-    features: ["10 bina", "Sınırsız daire", "Gelişmiş raporlar", "Öncelikli destek", "PDF dışa aktarım"],
-    cta: "Yükselt",
-    disabled: false,
-    color: "border-blue-500",
     badge: "Popüler",
+    color: "border-blue-500",
+    highlight: true,
+    monthly: 499,
+    yearly: 5489,
+    yearlyMonthly: 457,
+    features: [
+      "10 bina",
+      "Sınırsız daire",
+      "PDF rapor & dışa aktarım",
+      "Taksit takvimi",
+      "Gelişmiş raporlar",
+      "E-posta desteği",
+    ],
+    cta: "Pro'ya Geç",
   },
   {
+    id: "kurumsal",
     name: "Kurumsal",
-    price: "₺799",
-    period: "/ ay",
-    current: false,
-    features: ["Sınırsız bina", "Sınırsız daire", "Ekip hesapları", "API erişimi", "7/24 destek", "Özel entegrasyon"],
-    cta: "İletişime Geç",
-    disabled: false,
-    color: "border-slate-200",
-    badge: "",
+    badge: "Premium",
+    color: "border-amber-400",
+    highlight: false,
+    monthly: 999,
+    yearly: 10989,
+    yearlyMonthly: 916,
+    features: [
+      "Sınırsız bina",
+      "Sınırsız daire",
+      "PDF rapor & dışa aktarım",
+      "Taksit takvimi & SMS hatırlatma",
+      "WhatsApp bildirimleri",
+      "Ekip hesabı & rol yönetimi",
+      "API erişimi",
+      "7/24 öncelikli destek",
+    ],
+    cta: "Kurumsal'a Geç",
   },
 ];
 
+function fmt(n: number) {
+  return new Intl.NumberFormat("tr-TR").format(n);
+}
+
 export default function SettingsPage() {
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
@@ -54,7 +68,6 @@ export default function SettingsPage() {
           </div>
           <h2 className="font-semibold text-slate-800">Genel Ayarlar</h2>
         </div>
-
         <div className="space-y-4">
           <div className="flex items-center justify-between py-3 border-b border-slate-100">
             <div>
@@ -63,7 +76,6 @@ export default function SettingsPage() {
             </div>
             <span className="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">₺ TRY</span>
           </div>
-
           <div className="flex items-center justify-between py-3 border-b border-slate-100">
             <div>
               <p className="text-sm font-medium text-slate-700">Dil</p>
@@ -71,13 +83,12 @@ export default function SettingsPage() {
             </div>
             <span className="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">Türkçe</span>
           </div>
-
           <div className="flex items-center justify-between py-3">
             <div>
               <p className="text-sm font-medium text-slate-700">Uygulama Versiyonu</p>
               <p className="text-xs text-slate-400 mt-0.5">Mevcut sürüm</p>
             </div>
-            <span className="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">v1.0.0 MVP</span>
+            <span className="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">v1.0.0</span>
           </div>
         </div>
       </div>
@@ -89,32 +100,74 @@ export default function SettingsPage() {
             <Crown className="w-5 h-5 text-yellow-600" />
           </div>
           <div>
-            <h2 className="font-semibold text-slate-800">Abonelik</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Mevcut plan: Ücretsiz</p>
+            <h2 className="font-semibold text-slate-800">Abonelik Planları</h2>
+            <p className="text-xs text-slate-400 mt-0.5">İhtiyacınıza uygun planı seçin</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Aylık / Yıllık toggle */}
+        <div className="flex items-center justify-center mb-6">
+          <div className="bg-slate-100 rounded-xl p-1 flex gap-1">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                billing === "monthly" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              Aylık
+            </button>
+            <button
+              onClick={() => setBilling("yearly")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                billing === "yearly" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              Yıllık
+              <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                1 ay hediye
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {plans.map((plan) => (
             <div
-              key={plan.name}
-              className={`relative rounded-2xl border-2 p-5 ${plan.color} ${plan.name === "Pro" ? "bg-blue-50" : ""}`}
+              key={plan.id}
+              className={`relative rounded-2xl border-2 p-5 ${plan.color} ${plan.highlight ? "bg-blue-50" : "bg-white"}`}
             >
-              {plan.badge && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                  {plan.badge}
-                </span>
-              )}
-              {plan.current && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                  Aktif
-                </span>
+              <span className={`absolute -top-3 left-5 text-xs font-bold px-3 py-1 rounded-full ${
+                plan.highlight ? "bg-blue-600 text-white" : "bg-amber-400 text-white"
+              }`}>
+                {plan.badge}
+              </span>
+
+              <div className="flex items-center gap-2 mb-3 mt-1">
+                <Zap className={`w-4 h-4 ${plan.highlight ? "text-blue-600" : "text-amber-500"}`} />
+                <h3 className="font-bold text-slate-800">{plan.name}</h3>
+              </div>
+
+              {billing === "monthly" ? (
+                <div className="mb-1">
+                  <span className="text-3xl font-bold text-slate-900">₺{fmt(plan.monthly)}</span>
+                  <span className="text-slate-400 text-sm"> / ay</span>
+                </div>
+              ) : (
+                <div className="mb-1">
+                  <span className="text-3xl font-bold text-slate-900">₺{fmt(plan.yearly)}</span>
+                  <span className="text-slate-400 text-sm"> / yıl</span>
+                  <div className="text-xs text-emerald-600 font-medium mt-0.5">
+                    Aylık ₺{fmt(plan.yearlyMonthly)}'ye denk · 1 ay bedava
+                  </div>
+                </div>
               )}
 
-              <h3 className="font-bold text-slate-800 mb-1">{plan.name}</h3>
-              <div className="flex items-end gap-1 mb-4">
-                <span className="text-2xl font-bold text-slate-900">{plan.price}</span>
-                <span className="text-slate-400 text-sm mb-0.5">{plan.period}</span>
+              <div className={`text-xs font-medium mb-4 mt-2 px-2 py-1 rounded-lg inline-block ${
+                plan.highlight ? "bg-blue-100 text-blue-700" : "bg-amber-50 text-amber-700"
+              }`}>
+                {billing === "yearly"
+                  ? `₺${fmt(plan.monthly - plan.yearlyMonthly)} tasarruf / ay`
+                  : "Aylık faturalandırma"}
               </div>
 
               <ul className="space-y-2 mb-5">
@@ -127,16 +180,11 @@ export default function SettingsPage() {
               </ul>
 
               <button
-                disabled={plan.disabled}
-                onClick={() => {
-                  if (!plan.disabled) alert("Yakında aktif olacak! İletişim: destek@yapitakip.com");
-                }}
+                onClick={() => alert("Ödeme sistemi yakında aktif olacak!")}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                  plan.disabled
-                    ? "bg-slate-100 text-slate-400 cursor-default"
-                    : plan.name === "Pro"
+                  plan.highlight
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-slate-800 hover:bg-slate-900 text-white"
+                    : "bg-amber-500 hover:bg-amber-600 text-white"
                 }`}
               >
                 {plan.cta}
@@ -145,8 +193,8 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <p className="text-xs text-slate-400 text-center mt-4">
-          Abonelik planları yakında aktif olacak. Sorularınız için destek@yapitakip.com
+        <p className="text-xs text-slate-400 text-center mt-5">
+          Tüm planlar 14 gün ücretsiz deneme içerir · İptal istediğiniz zaman
         </p>
       </div>
     </div>
