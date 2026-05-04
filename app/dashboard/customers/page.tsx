@@ -29,7 +29,18 @@ export default async function CustomersPage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
           <Users className="w-16 h-16 text-slate-200 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-700 mb-2">Henüz müşteri yok</h3>
-          <p className="text-slate-400 text-sm">Daire satışı yapınca müşteriler burada görünür</p>
+          <p className="text-slate-400 text-sm mb-6">
+            Müşteri eklemek için <strong className="text-slate-600">Binalar</strong> bölümüne gidin,
+            bir daire seçin ve <strong className="text-slate-600">"Satıldı"</strong> olarak işaretleyerek
+            müşteri bilgilerini girin.
+          </p>
+          <Link
+            href="/dashboard/buildings"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+          >
+            <Building2 className="w-4 h-4" />
+            Binalar ve Dairelere Git
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
