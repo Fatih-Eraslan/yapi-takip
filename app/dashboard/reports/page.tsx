@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { BarChart3, TrendingUp, Building2, Users, CreditCard, Home } from "lucide-react";
+import { Building2, TrendingUp, Users, CreditCard, Home } from "lucide-react";
 import ReportsClient from "./ReportsClient";
 
 export default async function ReportsPage() {
@@ -26,22 +26,22 @@ export default async function ReportsPage() {
   const totalApts = buildings.reduce((s, b) => s + b.apartments.length, 0);
   const soldApts = buildings.reduce((s, b) => s + b.apartments.filter((a) => a.status === "SOLD").length, 0);
   const reservedApts = buildings.reduce((s, b) => s + b.apartments.filter((a) => a.status === "RESERVED").length, 0);
+  const availableApts = totalApts - soldApts - reservedApts;
   const totalRevenue = customers.reduce((s, c) => s + c.salePrice, 0);
   const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
 
   const buildingStats = buildings.map((b) => ({
     name: b.name,
-    total: b.apartments.length,
     sold: b.apartments.filter((a) => a.status === "SOLD").length,
     reserved: b.apartments.filter((a) => a.status === "RESERVED").length,
     available: b.apartments.filter((a) => a.status === "AVAILABLE").length,
-    revenue: customers
-      .filter((c) => c.apartment.buildingId === b.id)
-      .reduce((s, c) => s + c.salePrice, 0),
-    collected: payments
-      .filter((p) => p.apartment.buildingId === b.id)
-      .reduce((s, p) => s + p.amount, 0),
   }));
+
+  const statusData = [
+    { name: "Satıldı", value: soldApts, color: "#ef4444" },
+    { name: "Rezerve", value: reservedApts, color: "#f59e0b" },
+    { name: "Müsait", value: availableApts, color: "#10b981" },
+  ];
 
   const monthlyData = payments.reduce<Record<string, number>>((acc, p) => {
     const month = new Date(p.date).toLocaleDateString("tr-TR", { year: "numeric", month: "short" });
@@ -83,86 +83,13 @@ export default async function ReportsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Building breakdown */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-blue-600" />
-            Bina Bazında Özet
-          </h2>
-          {buildingStats.length === 0 ? (
-            <p className="text-slate-400 text-sm">Henüz bina yok</p>
-          ) : (
-            <div className="space-y-4">
-              {buildingStats.map((b) => (
-                <div key={b.name}>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-sm font-medium text-slate-700 truncate">{b.name}</span>
-                    <span className="text-xs text-slate-400 flex-shrink-0 ml-2">{b.sold}/{b.total} satıldı</span>
-                  </div>
-                  <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-slate-100">
-                    <div className="bg-red-400 transition-all" style={{ width: `${b.total > 0 ? (b.sold / b.total) * 100 : 0}%` }} />
-                    <div className="bg-amber-400 transition-all" style={{ width: `${b.total > 0 ? (b.reserved / b.total) * 100 : 0}%` }} />
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-400 mt-1">
-                    <span>{fmt(b.collected)} tahsilat</span>
-                    <span>{fmt(b.revenue)} beklenen</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Daire durumu dağılımı */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-600" />
-            Daire Durumu Dağılımı
-          </h2>
-          <div className="space-y-4">
-            {[
-              { label: "Satıldı", value: soldApts, color: "bg-red-500", pct: totalApts > 0 ? (soldApts / totalApts) * 100 : 0 },
-              { label: "Rezerve", value: reservedApts, color: "bg-amber-500", pct: totalApts > 0 ? (reservedApts / totalApts) * 100 : 0 },
-              { label: "Müsait", value: totalApts - soldApts - reservedApts, color: "bg-emerald-500", pct: totalApts > 0 ? ((totalApts - soldApts - reservedApts) / totalApts) * 100 : 0 },
-            ].map((s) => (
-              <div key={s.label}>
-                <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-slate-600">{s.label}</span>
-                  <span className="font-semibold text-slate-700">{s.value} daire ({s.pct.toFixed(0)}%)</span>
-                </div>
-                <div className="bg-slate-100 rounded-full h-3">
-                  <div className={`${s.color} h-3 rounded-full transition-all`} style={{ width: `${s.pct}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t border-slate-100 mt-6 pt-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Kalan Bakiye</span>
-              <span className="font-bold text-red-500">{fmt(totalRevenue - totalCollected)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Tahsilat Oranı</span>
-              <span className="font-bold text-emerald-600">
-                {totalRevenue > 0 ? ((totalCollected / totalRevenue) * 100).toFixed(1) : "0"}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Aylık tahsilat */}
-        {chartData.length > 0 && (
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-              Aylık Tahsilat
-            </h2>
-            <ReportsClient chartData={chartData} />
-          </div>
-        )}
-      </div>
+      <ReportsClient
+        chartData={chartData}
+        buildingStats={buildingStats}
+        statusData={statusData}
+        totalRevenue={totalRevenue}
+        totalCollected={totalCollected}
+      />
     </div>
   );
 }
