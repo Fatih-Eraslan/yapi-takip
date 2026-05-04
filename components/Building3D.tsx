@@ -20,19 +20,19 @@ const BLDG_D = 9.0;  // gerçekçi bina derinliği (~9m)
 
 // ─── Renk paleti ──────────────────────────────────────────────────────────────
 const C = {
-  plaster:   "#ede8de",
-  band:      "#d4cbbf",
-  pilaster:  "#e2dbd2",
-  concrete:  "#c8c0b4",
-  frame:     "#1c2334",
-  glass:     "#78b8d8",
-  balcony:   "#ddd6cb",
-  railing:   "#9090a0",
-  ground:    "#4a8c4a",
-  pavement:  "#b8b4ae",
-  road:      "#363636",
-  base:      "#c8bca5",
-  roof:      "#c2bab0",
+  plaster:   "#eae5db",   // ana sıva — krem
+  band:      "#d0c9bc",   // kat bandı — biraz daha koyu
+  pilaster:  "#e8e2d8",   // payeler — hafif açık (ışık tutar)
+  concrete:  "#b8b2a6",   // beton / denizlik
+  frame:     "#18202e",   // antrasit alüminyum
+  glass:     "#7ab8d8",
+  balcony:   "#dcd7ce",
+  railing:   "#8a8a9a",
+  ground:    "#4a7a3a",
+  pavement:  "#b4b0aa",
+  road:      "#303030",
+  base:      "#c4b89e",   // zemin kat taş kaplama
+  roof:      "#ada69a",
 };
 
 const STATUS: Record<string, { glass: string; overlay: string; label: string; dot: string }> = {
@@ -46,7 +46,7 @@ const STATUS: Record<string, { glass: string; overlay: string; label: string; do
 function SceneFog() {
   const { scene } = useThree();
   useEffect(() => {
-    scene.fog = new THREE.Fog("#c0d8f0", 45, 200);
+    scene.fog = new THREE.Fog("#3d5fa0", 50, 200);
     return () => { scene.fog = null; };
   }, [scene]);
   return null;
@@ -70,6 +70,8 @@ function BuildingReveal({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Daire facade birimi ──────────────────────────────────────────────────────
+const RECESS = 0.16; // pencere gömme derinliği
+
 function ApartmentUnit({
   apartment, col, floor, totalW, onClick,
 }: {
@@ -79,24 +81,14 @@ function ApartmentUnit({
   onClick: (apt: Apartment) => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const overlayRef  = useRef<THREE.Mesh>(null);
-  const glassRefs   = useRef<(THREE.Mesh | null)[]>([]);
+  const overlayRef = useRef<THREE.Mesh>(null);
   const sc = STATUS[apartment.status] ?? STATUS.AVAILABLE;
 
-  useFrame((_, dt) => {
-    // overlay opacity
+  useFrame(() => {
     if (overlayRef.current) {
       const mat = overlayRef.current.material as THREE.MeshStandardMaterial;
-      mat.opacity = THREE.MathUtils.lerp(mat.opacity, hovered ? 0.30 : 0, 0.14);
+      mat.opacity = THREE.MathUtils.lerp(mat.opacity, hovered ? 0.28 : 0, 0.14);
     }
-    // glass color lerp on hover
-    glassRefs.current.forEach((m) => {
-      if (!m) return;
-      const mat = m.material as THREE.MeshStandardMaterial;
-      const target = hovered ? new THREE.Color("#bfdbfe") : new THREE.Color(sc.glass);
-      mat.color.lerp(target, 0.12);
-      mat.opacity = THREE.MathUtils.lerp(mat.opacity, hovered ? 0.58 : 0.70, 0.12);
-    });
   });
 
   const x = -totalW / 2 + col * APT_W + APT_W / 2;
@@ -104,12 +96,13 @@ function ApartmentUnit({
   const z = BLDG_D / 2;
 
   const bayCount = Math.max(1, Math.round(APT_W / 1.65));
-  const bayW     = (APT_W * 0.70) / bayCount;
-  const winH     = APT_H * 0.54;
-  const winY     = APT_H * 0.07;
+  const bayW     = (APT_W * 0.68) / bayCount;
+  const winH     = APT_H * 0.56;
+  const winY     = APT_H * 0.06;
 
-  const balcW  = APT_W * 0.74;
-  const postCt = Math.max(4, Math.floor(balcW * 1.6));
+  const balcW  = APT_W * 0.80;
+  const KNEE_H = 0.38;
+  const RAIL_H = 0.58;
 
   return (
     <group
@@ -120,99 +113,135 @@ function ApartmentUnit({
     >
       {/* Hover overlay */}
       <mesh ref={overlayRef}>
-        <boxGeometry args={[APT_W - 0.06, APT_H - 0.05, 0.14]} />
+        <boxGeometry args={[APT_W - 0.06, APT_H - 0.05, 0.10]} />
         <meshStandardMaterial
-          color={sc.overlay}
-          transparent opacity={0}
-          emissive={sc.overlay} emissiveIntensity={hovered ? 0.22 : 0}
+          color={sc.overlay} transparent opacity={0}
+          emissive={sc.overlay} emissiveIntensity={hovered ? 0.18 : 0}
           depthWrite={false}
         />
       </mesh>
 
-      {/* Pencere kolonları */}
+      {/* Pencere bölmeleri */}
       {Array.from({ length: bayCount }, (_, b) => {
         const spacing = APT_W / (bayCount + 1);
         const bx = -APT_W / 2 + spacing * (b + 1);
         return (
-          <group key={b} position={[bx, winY, 0.08]}>
-            {/* Alüminyum dış çerçeve */}
-            <mesh castShadow>
-              <boxGeometry args={[bayW + 0.12, winH + 0.12, 0.09]} />
-              <meshStandardMaterial
-                color={C.frame}
-                roughness={0.28} metalness={0.80}
-                envMapIntensity={2.5}
-              />
+          <group key={b} position={[bx, winY, 0]}>
+            {/* Üst lento (gömme gölgesi) */}
+            <mesh position={[0, winH / 2 + 0.05, -RECESS / 2]}>
+              <boxGeometry args={[bayW + 0.26, 0.09, RECESS + 0.06]} />
+              <meshStandardMaterial color="#a8a29a" roughness={0.90} />
             </mesh>
-            {/* İç ısık paneli (oda ışığı simülasyonu) */}
-            <mesh position={[0, 0, -0.02]}>
+            {/* Alt denizlik (dışa çıkıntılı) */}
+            <mesh position={[0, -winH / 2 - 0.07, -RECESS / 2 + 0.06]} castShadow>
+              <boxGeometry args={[bayW + 0.32, 0.10, RECESS + 0.14]} />
+              <meshStandardMaterial color="#ccc6bc" roughness={0.84} />
+            </mesh>
+            {/* Sol revan */}
+            <mesh position={[-(bayW + 0.16) / 2, 0, -RECESS / 2]}>
+              <boxGeometry args={[0.07, winH + 0.12, RECESS + 0.04]} />
+              <meshStandardMaterial color="#bab4aa" roughness={0.88} />
+            </mesh>
+            {/* Sağ revan */}
+            <mesh position={[(bayW + 0.16) / 2, 0, -RECESS / 2]}>
+              <boxGeometry args={[0.07, winH + 0.12, RECESS + 0.04]} />
+              <meshStandardMaterial color="#bab4aa" roughness={0.88} />
+            </mesh>
+            {/* Güneş vizörü */}
+            <mesh position={[0, winH / 2 + 0.17, 0.10]} castShadow>
+              <boxGeometry args={[bayW + 0.34, 0.07, 0.36]} />
+              <meshStandardMaterial color={C.concrete} roughness={0.78} />
+            </mesh>
+            {/* Alüminyum çerçeve (gömülü) */}
+            <mesh position={[0, 0, -RECESS + 0.07]} castShadow>
+              <boxGeometry args={[bayW + 0.10, winH + 0.10, 0.07]} />
+              <meshStandardMaterial color="#18202e" roughness={0.20} metalness={0.90} envMapIntensity={3.5} />
+            </mesh>
+            {/* İç ışık paneli */}
+            <mesh position={[0, 0, -RECESS]}>
               <boxGeometry args={[bayW - 0.02, winH - 0.02, 0.02]} />
-              <meshStandardMaterial
-                color="#fff8e1"
-                emissive="#ffd740"
-                emissiveIntensity={0.55}
-              />
+              <meshStandardMaterial color="#fff8e8" emissive="#ffd080" emissiveIntensity={0.90} />
             </mesh>
-            {/* Cam */}
-            <mesh
-              position={[0, 0, 0.07]}
-              ref={(el) => { glassRefs.current[b] = el; }}
-            >
-              <boxGeometry args={[bayW, winH, 0.07]} />
-              <meshStandardMaterial
+            {/* Cam — fiziksel yansıma + kırılma */}
+            <mesh position={[0, 0, -RECESS + 0.14]}>
+              <boxGeometry args={[bayW, winH, 0.05]} />
+              <meshPhysicalMaterial
                 color={sc.glass}
-                transparent opacity={0.70}
-                roughness={0.02} metalness={0.22}
-                envMapIntensity={4.5}
+                transmission={0.80}
+                ior={1.52}
+                thickness={0.10}
+                roughness={0.03}
+                metalness={0.0}
+                reflectivity={0.60}
+                envMapIntensity={2.8}
+                emissive={sc.glass}
+                emissiveIntensity={0.05}
               />
             </mesh>
-            {/* Dikey T-kayıt */}
-            <mesh position={[0, 0, 0.14]}>
-              <boxGeometry args={[0.042, winH, 0.032]} />
-              <meshStandardMaterial color={C.frame} metalness={0.78} roughness={0.28} envMapIntensity={2.0} />
+            {/* Dikey çıta */}
+            <mesh position={[0, 0, -RECESS + 0.20]}>
+              <boxGeometry args={[0.036, winH, 0.026]} />
+              <meshStandardMaterial color="#18202e" metalness={0.88} roughness={0.20} />
             </mesh>
-            {/* Yatay orta kayıt */}
-            <mesh position={[0, winH * 0.05, 0.14]}>
-              <boxGeometry args={[bayW, 0.042, 0.032]} />
-              <meshStandardMaterial color={C.frame} metalness={0.78} roughness={0.28} envMapIntensity={2.0} />
+            {/* Yatay çıta */}
+            <mesh position={[0, winH * 0.06, -RECESS + 0.20]}>
+              <boxGeometry args={[bayW, 0.036, 0.026]} />
+              <meshStandardMaterial color="#18202e" metalness={0.88} roughness={0.20} />
             </mesh>
           </group>
         );
       })}
 
       {/* Balkon */}
-      <group position={[0, -APT_H * 0.385, 0.38]}>
+      <group position={[0, -APT_H * 0.385, 0.44]}>
         {/* Döşeme levhası */}
         <mesh castShadow receiveShadow>
-          <boxGeometry args={[balcW, 0.13, 0.65]} />
-          <meshStandardMaterial color={C.balcony} roughness={0.80} />
+          <boxGeometry args={[balcW, 0.14, 0.76]} />
+          <meshStandardMaterial color={C.balcony} roughness={0.78} />
         </mesh>
-        {/* Levha ön kenar şeridi */}
-        <mesh position={[0, -0.09, 0.33]}>
+        {/* Levha alın şeridi */}
+        <mesh position={[0, -0.10, 0.39]}>
           <boxGeometry args={[balcW + 0.04, 0.04, 0.055]} />
           <meshStandardMaterial color={C.concrete} roughness={0.85} />
         </mesh>
-        {/* Demir postlar */}
-        {Array.from({ length: postCt }, (_, i) => {
-          const bx = -balcW / 2 + (i / (postCt - 1)) * balcW;
-          return (
-            <mesh key={i} position={[bx, 0.33, 0.31]} castShadow>
-              <boxGeometry args={[0.046, 0.62, 0.046]} />
-              <meshStandardMaterial color={C.railing} roughness={0.45} metalness={0.65} envMapIntensity={1.8} />
-            </mesh>
-          );
-        })}
-        {/* Üst ray */}
-        <mesh position={[0, 0.64, 0.31]}>
-          <boxGeometry args={[balcW, 0.065, 0.065]} />
-          <meshStandardMaterial color={C.railing} roughness={0.38} metalness={0.70} envMapIntensity={2.0} />
+        {/* Beton diz duvarı */}
+        <mesh position={[0, 0.28, 0.40]} castShadow>
+          <boxGeometry args={[balcW, KNEE_H, 0.11]} />
+          <meshStandardMaterial color="#ddd8d0" roughness={0.80} />
+        </mesh>
+        {/* Yan beton perde duvarlar */}
+        <mesh position={[-balcW / 2 - 0.05, 0.25, 0.02]} castShadow>
+          <boxGeometry args={[0.10, KNEE_H + RAIL_H + 0.10, 0.80]} />
+          <meshStandardMaterial color={C.band} roughness={0.82} />
+        </mesh>
+        <mesh position={[ balcW / 2 + 0.05, 0.25, 0.02]} castShadow>
+          <boxGeometry args={[0.10, KNEE_H + RAIL_H + 0.10, 0.80]} />
+          <meshStandardMaterial color={C.band} roughness={0.82} />
+        </mesh>
+        {/* Cam korkuluk */}
+        <mesh position={[0, KNEE_H + RAIL_H / 2 - 0.09, 0.40]}>
+          <boxGeometry args={[balcW - 0.04, RAIL_H, 0.012]} />
+          <meshPhysicalMaterial
+            color="#d4ecf8"
+            transmission={0.92}
+            ior={1.50}
+            roughness={0.02}
+            metalness={0.0}
+            reflectivity={0.65}
+            envMapIntensity={2.2}
+          />
+        </mesh>
+        {/* Paslanmaz çelik üst küpeşte */}
+        <mesh position={[0, KNEE_H + RAIL_H + 0.02, 0.40]}>
+          <boxGeometry args={[balcW + 0.12, 0.055, 0.055]} />
+          <meshStandardMaterial color="#c8ccd4" roughness={0.24} metalness={0.85} envMapIntensity={3.0} />
         </mesh>
       </group>
 
       {/* Hover etiketi */}
       {hovered && (
         <Text
-          position={[0, APT_H * 0.71, 0.20]}
+          position={[0, APT_H * 0.71, 0.24]}
           fontSize={0.22}
           color="#ffffff"
           anchorX="center" anchorY="middle"
@@ -222,6 +251,95 @@ function ApartmentUnit({
           {`Daire ${apartment.number}  ·  ${sc.label}\n${apartment.type}${apartment.size ? `  ${apartment.size}m²` : ""}${apartment.price ? `  ·  ₺${apartment.price.toLocaleString("tr-TR")}` : ""}`}
         </Text>
       )}
+    </group>
+  );
+}
+
+// ─── Arka cephe daire birimi (dekoratif, tıklanamaz) ────────────────────────
+function BackApartmentUnit({
+  apartment, col, totalW,
+}: {
+  apartment: Apartment;
+  col: number;
+  totalW: number;
+}) {
+  const sc = STATUS[apartment.status] ?? STATUS.AVAILABLE;
+  const x = -totalW / 2 + col * APT_W + APT_W / 2;
+  const y = (apartment.floor - 1) * APT_H + APT_H / 2;
+  const z = -BLDG_D / 2;
+
+  const bayCount = Math.max(1, Math.round(APT_W / 1.65));
+  const bayW     = (APT_W * 0.68) / bayCount;
+  const winH     = APT_H * 0.56;
+  const winY     = APT_H * 0.06;
+  const balcW    = APT_W * 0.80;
+  const KNEE_H   = 0.38;
+  const RAIL_H   = 0.58;
+
+  return (
+    <group position={[x, y, z]}>
+      {Array.from({ length: bayCount }, (_, b) => {
+        const spacing = APT_W / (bayCount + 1);
+        const bx = -APT_W / 2 + spacing * (b + 1);
+        return (
+          <group key={b} position={[bx, winY, 0]}>
+            {/* Güneş vizörü */}
+            <mesh position={[0, winH / 2 + 0.17, -0.10]} castShadow>
+              <boxGeometry args={[bayW + 0.34, 0.07, 0.36]} />
+              <meshStandardMaterial color={C.concrete} roughness={0.78} />
+            </mesh>
+            {/* Çerçeve */}
+            <mesh position={[0, 0, RECESS - 0.07]}>
+              <boxGeometry args={[bayW + 0.10, winH + 0.10, 0.07]} />
+              <meshStandardMaterial color="#18202e" roughness={0.20} metalness={0.90} envMapIntensity={3.5} />
+            </mesh>
+            {/* İç ışık */}
+            <mesh position={[0, 0, RECESS]}>
+              <boxGeometry args={[bayW - 0.02, winH - 0.02, 0.02]} />
+              <meshStandardMaterial color="#fff8e8" emissive="#ffd080" emissiveIntensity={0.90} />
+            </mesh>
+            {/* Cam */}
+            <mesh position={[0, 0, RECESS - 0.14]}>
+              <boxGeometry args={[bayW, winH, 0.05]} />
+              <meshPhysicalMaterial
+                color={sc.glass} transmission={0.80} ior={1.52} thickness={0.10}
+                roughness={0.03} metalness={0.0} reflectivity={0.60}
+                envMapIntensity={2.8} emissive={sc.glass} emissiveIntensity={0.05}
+              />
+            </mesh>
+          </group>
+        );
+      })}
+      {/* Balkon (arka) */}
+      <group position={[0, -APT_H * 0.385, -0.44]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[balcW, 0.14, 0.76]} />
+          <meshStandardMaterial color={C.balcony} roughness={0.78} />
+        </mesh>
+        <mesh position={[0, 0.28, -0.40]} castShadow>
+          <boxGeometry args={[balcW, KNEE_H, 0.11]} />
+          <meshStandardMaterial color="#ddd8d0" roughness={0.80} />
+        </mesh>
+        <mesh position={[-balcW / 2 - 0.05, 0.25, -0.02]} castShadow>
+          <boxGeometry args={[0.10, KNEE_H + RAIL_H + 0.10, 0.80]} />
+          <meshStandardMaterial color={C.band} roughness={0.82} />
+        </mesh>
+        <mesh position={[ balcW / 2 + 0.05, 0.25, -0.02]} castShadow>
+          <boxGeometry args={[0.10, KNEE_H + RAIL_H + 0.10, 0.80]} />
+          <meshStandardMaterial color={C.band} roughness={0.82} />
+        </mesh>
+        <mesh position={[0, KNEE_H + RAIL_H / 2 - 0.09, -0.40]}>
+          <boxGeometry args={[balcW - 0.04, RAIL_H, 0.012]} />
+          <meshPhysicalMaterial
+            color="#d4ecf8" transmission={0.92} ior={1.50}
+            roughness={0.02} metalness={0.0} reflectivity={0.65} envMapIntensity={2.2}
+          />
+        </mesh>
+        <mesh position={[0, KNEE_H + RAIL_H + 0.02, -0.40]}>
+          <boxGeometry args={[balcW + 0.12, 0.055, 0.055]} />
+          <meshStandardMaterial color="#c8ccd4" roughness={0.24} metalness={0.85} envMapIntensity={3.0} />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -368,6 +486,16 @@ function BuildingShell({
       <mesh position={[0, totalH / 2 + 0.36, BLDG_D / 2 + 0.14]}>
         <boxGeometry args={[W, 0.72, 0.045]} />
         <meshStandardMaterial color={C.plaster} roughness={0.88} />
+      </mesh>
+      {/* LED şerit — parapet üst kenar (mavi-beyaz accent) */}
+      <mesh position={[0, totalH / 2 + 0.77, BLDG_D / 2 + 0.16]}>
+        <boxGeometry args={[W + 0.10, 0.038, 0.018]} />
+        <meshStandardMaterial color="#a8d8ff" emissive="#80c8ff" emissiveIntensity={3.2} />
+      </mesh>
+      {/* LED şerit — taban kenar */}
+      <mesh position={[0, -totalH / 2 + 0.01, BLDG_D / 2 + 0.014]}>
+        <boxGeometry args={[W, 0.028, 0.016]} />
+        <meshStandardMaterial color="#c0e8ff" emissive="#90d0ff" emissiveIntensity={2.5} />
       </mesh>
 
       {/* Çatı üstü merdiven kulesi */}
@@ -540,6 +668,35 @@ function Car({ p, color = "#c62828", ry = 0 }: { p: [number, number, number]; co
   );
 }
 
+// ─── Sokak lambası ───────────────────────────────────────────────────────────
+function StreetLamp({ p }: { p: [number, number, number] }) {
+  return (
+    <group position={p}>
+      {/* Direk */}
+      <mesh position={[0, 2.5, 0]} castShadow>
+        <cylinderGeometry args={[0.055, 0.080, 5.0, 6]} />
+        <meshStandardMaterial color="#3a3a4a" roughness={0.55} metalness={0.62} envMapIntensity={1.5} />
+      </mesh>
+      {/* Kol */}
+      <mesh position={[0.62, 5.1, 0]} rotation={[0, 0, -Math.PI * 0.12]} castShadow>
+        <cylinderGeometry args={[0.038, 0.038, 1.25, 6]} />
+        <meshStandardMaterial color="#3a3a4a" roughness={0.55} metalness={0.62} />
+      </mesh>
+      {/* Armatür gövde */}
+      <mesh position={[1.15, 5.0, 0]}>
+        <boxGeometry args={[0.42, 0.15, 0.30]} />
+        <meshStandardMaterial color="#2a2a3a" roughness={0.45} metalness={0.72} />
+      </mesh>
+      {/* Lamba yüzeyi */}
+      <mesh position={[1.15, 4.93, 0]}>
+        <boxGeometry args={[0.32, 0.05, 0.22]} />
+        <meshStandardMaterial color="#fffde0" emissive="#ffe066" emissiveIntensity={4.5} />
+      </mesh>
+      <pointLight position={[1.15, 4.75, 0]} color="#ffe8a0" intensity={5} distance={13} decay={2} />
+    </group>
+  );
+}
+
 // ─── Zemin ───────────────────────────────────────────────────────────────────
 function Ground({ totalW }: { totalW: number }) {
   return (
@@ -621,6 +778,15 @@ function BuildingScene({
           />
         ))}
 
+        {apartments.map((apt) => (
+          <BackApartmentUnit
+            key={`back-${apt.id}`}
+            apartment={apt}
+            col={floorPos[apt.id] ?? 0}
+            totalW={totalW}
+          />
+        ))}
+
         {/* Kat numaraları */}
         {Array.from({ length: floorCount }, (_, fi) => (
           <Text
@@ -655,6 +821,10 @@ function BuildingScene({
       <Tree p={[ totalW / 2 + 2.8, -0.07, BLDG_D / 2 + 3.0]} />
       <Tree p={[-totalW / 2 - 2.8, -0.07, BLDG_D / 2 + 7.5]} scale={0.85} />
       <Tree p={[ totalW / 2 + 2.8, -0.07, BLDG_D / 2 + 7.5]} scale={0.85} />
+
+      {/* Sokak lambaları */}
+      <StreetLamp p={[-totalW / 2 - 5.2, -0.07, BLDG_D / 2 + 8.0]} />
+      <StreetLamp p={[ totalW / 2 + 5.2, -0.07, BLDG_D / 2 + 8.0]} />
 
       {/* Arabalar */}
       <Car p={[-totalW * 0.28, -0.07, BLDG_D / 2 + 14.2]} color="#1565c0" ry={Math.PI * 0.02} />
@@ -708,7 +878,7 @@ export default function Building3D({ building, onApartmentClick }: Building3DPro
         dpr={[1, 2]}
         camera={{ position: [camDist * 0.80, totalH * 0.62, camDist * 0.72], fov: 42 }}
         gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.15 }}
-        style={{ background: "linear-gradient(180deg, #3a78c9 0%, #6baed6 28%, #93c5e8 55%, #cce4f5 78%, #f0f6fc 100%)" }}
+        style={{ background: "linear-gradient(175deg, #080f28 0%, #0f1f52 12%, #162e7a 28%, #1f4aa8 45%, #3a72c8 62%, #6aa8e0 78%, #b0d4ee 92%, #d8ecf8 100%)" }}
       >
         <Suspense fallback={null}>
           {/* Işıklar */}
@@ -737,16 +907,23 @@ export default function Building3D({ building, onApartmentClick }: Building3DPro
             decay={2}
           />
 
+          {/* Mavi dolgu — arka/yan (gölge yumuşatır) */}
+          <directionalLight position={[-12, 10, -22]} intensity={0.42} color="#4a90ff" />
+          {/* Gün batımı yan ışık */}
+          <directionalLight position={[28, 8, 5]} intensity={0.30} color="#ffb060" />
+          {/* Parapet LED yansıması */}
+          <pointLight position={[0, totalH + 2, BLDG_D / 2 + 1]} intensity={2.2} color="#80d0ff" distance={totalW * 2.5} decay={2} />
+
           {/* HDRI ortam yansıması */}
           <Environment preset="city" />
 
           {/* Güneş & gökyüzü */}
           <Sky
             sunPosition={[16, 32, 22]}
-            turbidity={3.2}
-            rayleigh={0.45}
-            mieCoefficient={0.003}
-            mieDirectionalG={0.93}
+            turbidity={5.5}
+            rayleigh={0.72}
+            mieCoefficient={0.004}
+            mieDirectionalG={0.92}
           />
 
           <BuildingScene

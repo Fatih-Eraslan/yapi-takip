@@ -12,6 +12,8 @@ import {
   LogOut,
   Menu,
   X,
+  UserCircle,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,32 +25,32 @@ const navItems = [
   { href: "/dashboard/reports", label: "Raporlar", icon: BarChart3 },
 ];
 
+const bottomNavItems = [
+  { href: "/dashboard/profile", label: "Profilim", icon: UserCircle },
+  { href: "/dashboard/settings", label: "Ayarlar", icon: Settings },
+];
+
 export default function Sidebar({ userName, company }: { userName: string; company?: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const NavLinks = () => (
-    <>
-      {navItems.map(({ href, label, icon: Icon }) => {
-        const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={() => setOpen(false)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium ${
-              active
-                ? "bg-blue-600 text-white shadow-md"
-                : "text-slate-400 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            <Icon className="w-5 h-5 flex-shrink-0" />
-            {label}
-          </Link>
-        );
-      })}
-    </>
-  );
+  const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }) => {
+    const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+    return (
+      <Link
+        href={href}
+        onClick={() => setOpen(false)}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium ${
+          active
+            ? "bg-blue-600 text-white shadow-md"
+            : "text-slate-400 hover:text-white hover:bg-white/10"
+        }`}
+      >
+        <Icon className="w-5 h-5 flex-shrink-0" />
+        {label}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -89,11 +91,12 @@ export default function Sidebar({ userName, company }: { userName: string; compa
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <NavLinks />
+          {navItems.map((item) => <NavLink key={item.href} {...item} />)}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
-          <div className="px-4 py-2 mb-2">
+        <div className="p-4 border-t border-white/10 space-y-1">
+          {bottomNavItems.map((item) => <NavLink key={item.href} {...item} />)}
+          <div className="px-4 py-2 mt-2">
             <p className="text-white text-sm font-medium truncate">{userName}</p>
             {company && <p className="text-blue-300 text-xs truncate">{company}</p>}
           </div>

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, Grid3x3, Boxes, X,
-  User, Phone, Mail, CreditCard, Loader2, CheckCircle,
+  User, Phone, Mail, CreditCard, Loader2, CheckCircle, Trash2,
 } from "lucide-react";
 import type { Apartment, Building } from "@/lib/types";
 
@@ -33,10 +34,19 @@ const inputCls =
   "w-full px-3 py-3 text-base rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white";
 
 export default function BuildingDetailClient({ building: initial }: { building: Building }) {
+  const router = useRouter();
   const [building, setBuilding]     = useState(initial);
   const [view, setView]             = useState<"3d" | "grid">("3d");
   const [selectedApt, setSelectedApt] = useState<Apartment | null>(null);
   const [panel, setPanel]           = useState<"detail" | "addCustomer" | "addPayment">("detail");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  async function handleDeleteBuilding() {
+    setDeleteLoading(true);
+    await fetch(`/api/buildings/${building.id}`, { method: "DELETE" });
+    router.push("/dashboard/buildings");
+  }
   const [loading, setLoading]       = useState(false);
   const [success, setSuccess]       = useState(false);
 
@@ -162,7 +172,44 @@ export default function BuildingDetailClient({ building: initial }: { building: 
               <span className="hidden sm:inline">{id === "3d" ? "3D" : "Liste"}</span>
             </button>
           ))}
+          <button
+            onClick={() => setDeleteConfirm(true)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sil</span>
+          </button>
         </div>
+
+        {/* Silme onay modalı */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Binayı Sil</h3>
+              <p className="text-slate-500 text-sm text-center mb-6">
+                <strong>{building.name}</strong> binası ve tüm daire, müşteri ve ödeme kayıtları silinecek. Bu işlem geri alınamaz.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleDeleteBuilding}
+                  disabled={deleteLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm disabled:opacity-50"
+                >
+                  {deleteLoading ? "Siliniyor..." : "Evet, Sil"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Stats bar ── */}
